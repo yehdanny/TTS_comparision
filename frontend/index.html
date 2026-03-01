@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TTS Comparison</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>TTS Comparison</h1>
+    <p class="subtitle">Compare F5-TTS, CosyVoice, and GPT-SoVITs side by side</p>
+  </header>
+
+  <main>
+    <!-- Input Panel -->
+    <section class="input-panel">
+      <div class="input-group">
+        <label for="tts-text">Synthesis Text</label>
+        <textarea id="tts-text" rows="4" placeholder="輸入要合成的文字… / Enter text to synthesize…">你好，這是一個文字轉語音系統的測試。</textarea>
+      </div>
+      <div class="input-group">
+        <label for="ref-audio">Reference Audio <span class="optional">(optional, for voice cloning)</span></label>
+        <input type="file" id="ref-audio" accept="audio/*" />
+      </div>
+      <button id="btn-generate-all" class="btn btn-primary" onclick="generateAll()">Generate All</button>
+    </section>
+
+    <!-- Model Cards -->
+    <section class="model-grid">
+      <!-- F5-TTS -->
+      <div class="model-card" id="card-f5">
+        <div class="card-header">
+          <h2>F5-TTS</h2>
+          <span class="status-badge status-loading" id="status-f5">Loading</span>
+        </div>
+        <button class="btn btn-secondary" onclick="generateModel('f5')">Generate</button>
+        <div class="audio-section" id="audio-section-f5" style="display:none;">
+          <audio id="audio-f5" controls></audio>
+          <a id="download-f5" class="btn btn-download" download>Download</a>
+        </div>
+        <div class="spinner" id="spinner-f5" style="display:none;"></div>
+        <table class="metrics-table" id="metrics-f5">
+          <tr><td>Inference Time</td><td id="metric-f5-time">—</td></tr>
+          <tr><td>RTF</td><td id="metric-f5-rtf">—</td></tr>
+          <tr><td>File Size</td><td id="metric-f5-size">—</td></tr>
+        </table>
+      </div>
+
+      <!-- CosyVoice -->
+      <div class="model-card" id="card-cosyvoice">
+        <div class="card-header">
+          <h2>CosyVoice</h2>
+          <span class="status-badge status-loading" id="status-cosyvoice">Loading</span>
+        </div>
+        <button class="btn btn-secondary" onclick="generateModel('cosyvoice')">Generate</button>
+        <div class="audio-section" id="audio-section-cosyvoice" style="display:none;">
+          <audio id="audio-cosyvoice" controls></audio>
+          <a id="download-cosyvoice" class="btn btn-download" download>Download</a>
+        </div>
+        <div class="spinner" id="spinner-cosyvoice" style="display:none;"></div>
+        <table class="metrics-table" id="metrics-cosyvoice">
+          <tr><td>Inference Time</td><td id="metric-cosyvoice-time">—</td></tr>
+          <tr><td>RTF</td><td id="metric-cosyvoice-rtf">—</td></tr>
+          <tr><td>File Size</td><td id="metric-cosyvoice-size">—</td></tr>
+        </table>
+      </div>
+
+      <!-- GPT-SoVITs -->
+      <div class="model-card" id="card-gptsovits">
+        <div class="card-header">
+          <h2>GPT-SoVITs</h2>
+          <span class="status-badge status-loading" id="status-gptsovits">Loading</span>
+        </div>
+        <button class="btn btn-secondary" onclick="generateModel('gptsovits')">Generate</button>
+        <div class="audio-section" id="audio-section-gptsovits" style="display:none;">
+          <audio id="audio-gptsovits" controls></audio>
+          <a id="download-gptsovits" class="btn btn-download" download>Download</a>
+        </div>
+        <div class="spinner" id="spinner-gptsovits" style="display:none;"></div>
+        <table class="metrics-table" id="metrics-gptsovits">
+          <tr><td>Inference Time</td><td id="metric-gptsovits-time">—</td></tr>
+          <tr><td>RTF</td><td id="metric-gptsovits-rtf">—</td></tr>
+          <tr><td>File Size</td><td id="metric-gptsovits-size">—</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Demo Samples ─────────────────────────────────────────────────── -->
+    <section class="demo-section">
+      <h2 class="demo-title">Pre-generated Samples</h2>
+      <p class="demo-subtitle">Same text &middot; Same gender &middot; Same language — only the TTS system differs</p>
+
+      <!-- Row header -->
+      <div class="demo-grid demo-header-row">
+        <div class="demo-col-label"></div>
+        <div class="demo-col-model">F5-TTS</div>
+        <div class="demo-col-model">CosyVoice</div>
+        <div class="demo-col-model">GPT-SoVITs</div>
+      </div>
+
+      <!-- Sample 1: Traditional Chinese · Female -->
+      <div class="demo-grid demo-row">
+        <div class="demo-col-label">
+          <span class="lang-tag">繁體中文</span>
+          <span class="gender-tag female">Female</span>
+          <p class="sample-text">人工智慧語音合成技術正在快速發展，未來將有更多創新的應用場景。</p>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/zh_female_f5.mp3"></audio>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/zh_female_cosyvoice.mp3"></audio>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/zh_female_gptsovits.mp3"></audio>
+        </div>
+      </div>
+
+      <!-- Sample 2: Traditional Chinese · Male -->
+      <div class="demo-grid demo-row">
+        <div class="demo-col-label">
+          <span class="lang-tag">繁體中文</span>
+          <span class="gender-tag male">Male</span>
+          <p class="sample-text">歡迎使用語音合成比較平台，請輸入您想要合成的文字內容。</p>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/zh_male_f5.mp3"></audio>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/zh_male_cosyvoice.mp3"></audio>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/zh_male_gptsovits.mp3"></audio>
+        </div>
+      </div>
+
+      <!-- Sample 3: English · Female -->
+      <div class="demo-grid demo-row">
+        <div class="demo-col-label">
+          <span class="lang-tag en">English</span>
+          <span class="gender-tag female">Female</span>
+          <p class="sample-text">Artificial intelligence is transforming the way we interact with technology every day.</p>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/en_female_f5.mp3"></audio>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/en_female_cosyvoice.mp3"></audio>
+        </div>
+        <div class="demo-col-model">
+          <audio controls src="samples/en_female_gptsovits.mp3"></audio>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

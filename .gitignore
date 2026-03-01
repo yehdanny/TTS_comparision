@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+ttsenv/
+venv/
+.venv/
+env/
+
+# Generated audio outputs (runtime)
+AI_end/outputs/
+
+# Temp reference audio
+AI_end/outputs/tmp_*.wav
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Model weights (large binary files)
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
