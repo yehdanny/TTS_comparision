@@ -17,7 +17,10 @@
       "Bash(timeout 120 ../venv_cosy/Scripts/python:*)",
       "Bash(timeout 60 ../venv_gpt/Scripts/python:*)",
       "Bash(venv_cosy/Scripts/pip show:*)",
-      "Bash(PYTHONUTF8=1:*)"
+      "Bash(PYTHONUTF8=1:*)",
+      "Bash(winget install:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(cmd.exe:*)"
     ]
   }
 }
