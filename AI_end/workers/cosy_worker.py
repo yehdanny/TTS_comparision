@@ -8,32 +8,35 @@ import sys
 import time
 import uuid
 
-# Add CosyVoice repo to path
+# ── repo path: workers/ → AI_end/ → project_tts/ → claude_place/ → CosyVoice/
 COSY_REPO = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "CosyVoice")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "CosyVoice")
 )
 sys.path.insert(0, COSY_REPO)
 sys.path.insert(0, os.path.join(COSY_REPO, "third_party", "Matcha-TTS"))
 
-MODEL_DIR = os.path.join(COSY_REPO, "pretrained_models", "CosyVoice2-0.5B")
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+MODEL_DIR  = os.path.join(COSY_REPO, "pretrained_models", "CosyVoice2-0.5B")
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print("LOADING", flush=True)
-from cosyvoice.cli.cosyvoice import CosyVoice2  # noqa: E402
-import torchaudio                                # noqa: E402
 
-model = CosyVoice2(MODEL_DIR, load_jit=False, load_trt=False)
+from cosyvoice.cli.cosyvoice import CosyVoice2   # noqa: E402
+import torchaudio                                  # noqa: E402
+
+model       = CosyVoice2(MODEL_DIR, load_jit=False, load_trt=False)
 SAMPLE_RATE = model.sample_rate
+_SPEAKERS   = model.list_available_spks()
+# pick a Mandarin speaker for default (no reference audio) mode
+_DEFAULT_SPK = next(
+    (s for s in _SPEAKERS if "中" in s or "zh" in s.lower()),
+    _SPEAKERS[0] if _SPEAKERS else None,
+)
 
-# Available SFT speakers for no-reference mode
-_DEFAULT_SPEAKERS = model.list_available_spks() if hasattr(model, "list_available_spks") else []
-_ZH_SPEAKER = next((s for s in _DEFAULT_SPEAKERS if "中" in s or "zh" in s.lower()), None) or (_DEFAULT_SPEAKERS[0] if _DEFAULT_SPEAKERS else None)
-
-print("READY", flush=True)
+print(f"READY (speakers: {_SPEAKERS})", flush=True)
 
 
-def _collect_audio(generator) -> "torch.Tensor":
+def _collect_audio(generator):
     import torch
     chunks = [chunk["tts_speech"] for chunk in generator]
     return torch.cat(chunks, dim=1)
@@ -43,29 +46,26 @@ def handle(req: dict) -> dict:
     req_id   = req.get("id", str(uuid.uuid4()))
     text     = req["text"]
     ref_path = req.get("ref_audio")
-    ref_text = req.get("ref_text", "")
 
     out_path = os.path.join(OUTPUT_DIR, f"cosyvoice_{uuid.uuid4().hex}.wav")
-    start = time.perf_counter()
+    start    = time.perf_counter()
 
     if ref_path and os.path.exists(ref_path):
-        # Voice cloning (zero-shot)
         ref_audio, sr = torchaudio.load(ref_path)
         if sr != SAMPLE_RATE:
             ref_audio = torchaudio.functional.resample(ref_audio, sr, SAMPLE_RATE)
         audio = _collect_audio(
-            model.inference_zero_shot(text, ref_text, ref_audio, stream=False)
+            model.inference_zero_shot(text, "", ref_audio, stream=False)
         )
-    elif _ZH_SPEAKER:
-        # SFT (preset speaker)
+    elif _DEFAULT_SPK:
         audio = _collect_audio(
-            model.inference_sft(text, _ZH_SPEAKER, stream=False)
+            model.inference_sft(text, _DEFAULT_SPK, stream=False)
         )
     else:
         raise RuntimeError("No speakers available and no reference audio provided")
 
     torchaudio.save(out_path, audio, SAMPLE_RATE)
-    elapsed = time.perf_counter() - start
+    elapsed  = time.perf_counter() - start
     duration = audio.shape[-1] / SAMPLE_RATE
 
     return {

@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ttsenv/Scripts/pip install:*)",
+      "Bash(../ttsenv/Scripts/python:*)",
+      "Bash(ttsenv/Scripts/playwright install:*)",
+      "Bash(ttsenv/Scripts/python:*)",
+      "Bash(python:*)",
+      "Bash(powershell:*)",
+      "Bash(pip show:*)",
+      "Bash(ttsenv/Scripts/pip list:*)",
+      "Bash(venv_cosy/Scripts/pip install:*)",
+      "Bash(venv_cosy/Scripts/python:*)",
+      "Bash(venv_gpt/Scripts/python:*)",
+      "Bash(timeout 60 ../venv_cosy/Scripts/python:*)",
+      "Bash(timeout 30 ../venv_gpt/Scripts/python:*)",
+      "Bash(timeout 120 ../venv_cosy/Scripts/python:*)",
+      "Bash(timeout 60 ../venv_gpt/Scripts/python:*)"
+    ]
+  }
+}

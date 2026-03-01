@@ -8,37 +8,44 @@ import sys
 import time
 import uuid
 
-# Add GPT-SoVITS repo to path
+# ── repo path: workers/ → AI_end/ → project_tts/ → claude_place/ → GPT-SoVITS/
 GPT_REPO = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "GPT-SoVITS")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "GPT-SoVITS")
 )
 sys.path.insert(0, GPT_REPO)
+# AR, module, text, etc. are inside GPT_SoVITS/ and use bare absolute imports
+sys.path.insert(0, os.path.join(GPT_REPO, "GPT_SoVITS"))
 
-# Pretrained model paths (downloaded from HuggingFace lj1995/GPT-SoVITS)
-PRETRAINED_DIR  = os.path.join(GPT_REPO, "GPT_SoVITS", "pretrained_models")
-GPT_WEIGHTS     = os.path.join(PRETRAINED_DIR, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt")
-SOVITS_WEIGHTS  = os.path.join(PRETRAINED_DIR, "gsv-v2final-pretrained", "s2G2333k.pth")
-BERT_PATH       = os.path.join(PRETRAINED_DIR, "chinese-roberta-wwm-ext-large")
-CNHF_PATH       = os.path.join(PRETRAINED_DIR, "chinese-hubert-base")
-
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# GPT-SoVITS resolves all model paths relative to the repo root
+os.chdir(GPT_REPO)
+
 print("LOADING", flush=True)
-os.chdir(GPT_REPO)  # GPT-SoVITS relies on relative paths internally
 
-from GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config  # noqa: E402
+from TTS_infer_pack.TTS import TTS, TTS_Config   # noqa: E402
 
-tts_config = TTS_Config(os.path.join(GPT_REPO, "GPT_SoVITS", "configs", "tts_infer.yaml"))
-tts_config.device = "cuda"
-tts_config.is_half = True
-tts_config.t2s_weights_path   = GPT_WEIGHTS
-tts_config.vits_weights_path  = SOVITS_WEIGHTS
-tts_config.bert_base_path     = BERT_PATH
-tts_config.cnhf_base_path     = CNHF_PATH
+# Load using tts_infer.yaml (custom section: cuda, is_half=True, v2 weights)
+CONFIG_PATH = os.path.join("GPT_SoVITS", "configs", "tts_infer.yaml")
+config = TTS_Config(CONFIG_PATH)
+config.configs["device"]  = "cuda"
+config.configs["is_half"] = True
 
-pipeline = TTS(tts_config)
+pipeline = TTS(config)
+
 print("READY", flush=True)
+
+
+def _detect_lang(text: str) -> str:
+    """Map text content to GPT-SoVITS language code."""
+    has_zh = any("\u4e00" <= c <= "\u9fff" for c in text)
+    has_en = any(c.isascii() and c.isalpha() for c in text)
+    if has_zh and has_en:
+        return "zh"       # mixed zh/en
+    if has_zh:
+        return "all_zh"   # pure Chinese
+    return "en"           # pure English
 
 
 def handle(req: dict) -> dict:
@@ -47,50 +54,44 @@ def handle(req: dict) -> dict:
     ref_path = req.get("ref_audio")
     ref_text = req.get("ref_text", "")
 
-    # GPT-SoVITS needs a reference audio; use a bundled default if none provided
     if not ref_path or not os.path.exists(ref_path):
-        # Try to find any sample .wav shipped with the repo
-        sample_dir = os.path.join(GPT_REPO, "tools", "asr", "demo_outputs")
-        wavs = [f for f in os.listdir(sample_dir) if f.endswith(".wav")] if os.path.isdir(sample_dir) else []
-        ref_path = os.path.join(sample_dir, wavs[0]) if wavs else None
-        ref_text = ""
+        raise RuntimeError(
+            "GPT-SoVITS requires a reference audio file. "
+            "Please upload a WAV file in the reference audio field."
+        )
 
-    if not ref_path:
-        raise RuntimeError("GPT-SoVITS requires a reference audio file")
-
-    out_path = os.path.join(OUTPUT_DIR, f"gptsovits_{uuid.uuid4().hex}.wav")
-    start = time.perf_counter()
-
-    # Detect language
-    has_zh = any("\u4e00" <= c <= "\u9fff" for c in text)
-    text_lang = "zh" if has_zh else "en"
-    ref_lang  = "zh" if ref_text and any("\u4e00" <= c <= "\u9fff" for c in ref_text) else "en"
+    out_path  = os.path.join(OUTPUT_DIR, f"gptsovits_{uuid.uuid4().hex}.wav")
+    text_lang = _detect_lang(text)
+    ref_lang  = _detect_lang(ref_text) if ref_text else text_lang
 
     inputs = {
-        "text": text,
-        "text_lang": text_lang,
-        "ref_audio_path": ref_path,
-        "prompt_text": ref_text,
-        "prompt_lang": ref_lang,
-        "top_k": 5,
-        "top_p": 1.0,
-        "temperature": 1.0,
-        "speed_factor": 1.0,
+        "text":             text,
+        "text_lang":        text_lang,
+        "ref_audio_path":   ref_path,
+        "prompt_text":      ref_text,
+        "prompt_lang":      ref_lang,
+        "top_k":            15,
+        "top_p":            1.0,
+        "temperature":      1.0,
+        "speed_factor":     1.0,
+        "text_split_method": "cut1",
+        "batch_size":       1,
     }
 
     import soundfile as sf
     import numpy as np
-    chunks = []
-    sample_rate = 32000
+
+    start   = time.perf_counter()
+    chunks  = []
+    sr_out  = 32000
     for sr, audio in pipeline.run(inputs):
-        sample_rate = sr
-        chunks.append(audio)
+        sr_out = sr
+        chunks.append(audio if hasattr(audio, "__len__") else audio)
 
-    audio_data = np.concatenate(chunks) if chunks else np.zeros(sample_rate, dtype=np.float32)
-    sf.write(out_path, audio_data, sample_rate)
-
+    audio_data = np.concatenate(chunks) if chunks else np.zeros(sr_out, dtype=np.float32)
+    sf.write(out_path, audio_data, sr_out)
     elapsed  = time.perf_counter() - start
-    duration = len(audio_data) / sample_rate
+    duration = len(audio_data) / sr_out
 
     return {
         "id": req_id,
