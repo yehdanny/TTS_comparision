@@ -1,163 +1,266 @@
-# TTS Comparison
+# TTS 語音合成比較平台
 
-A local web application to deploy and compare three open-source text-to-speech systems — **F5-TTS**, **CosyVoice**, and **GPT-SoVITs** — side by side.
+本專案是一個本地端網頁應用程式，可同時部署並比較三個開源語音合成系統：**F5-TTS**、**CosyVoice** 與 **GPT-SoVITs**，讓使用者能夠直接聆聽各系統的輸出差異。
 
-> **Note:** Real models are not required to run. Stub implementations using [edge-tts](https://github.com/rany2/edge-tts) (Microsoft Neural TTS) make the full UI testable immediately, and are designed to be swapped for real model inference once installed.
-
----
-
-## Screenshots
-
-### Main Interface — Live Generation
-![Main interface showing three model cards with Generate All button](docs/screenshot_main.png)
-
-### Pre-generated Demo Samples
-![Demo section comparing same text across three TTS systems](docs/screenshot_demo.png)
+支援**繁體中文**與英文輸入，並可上傳參考音訊進行聲音複製（Voice Cloning）。
 
 ---
 
-## Features
+## 網頁截圖
 
-- **Side-by-side comparison** of F5-TTS, CosyVoice, and GPT-SoVITs
-- **Live synthesis** — enter any text and generate with all three models in parallel
-- **Traditional Chinese support** (`zh-TW`) out of the box
-- **Reference audio upload** for voice cloning (passed to models that support it)
-- **Metrics display** — Inference Time, RTF (Real-Time Factor), File Size per model
-- **Pre-generated demo samples** — 3 scenarios (繁中 Female, 繁中 Male, English Female)
-- **Download** generated audio files
-- Dark theme, responsive layout
+### 主介面 — 即時語音合成
+![主介面](docs/screenshot_main.png)
+
+### 預生成範例區塊
+![範例比較](docs/screenshot_demo.png)
 
 ---
 
-## Project Structure
+## 功能特色
+
+- **三系統並排比較**：同時對 F5-TTS、CosyVoice、GPT-SoVITs 發出合成請求
+- **即時合成**：輸入任意文字，點擊「Generate All」同時生成三份音訊
+- **繁體中文支援**：原生支援繁中輸入（zh-TW）
+- **參考音訊上傳**：上傳 `.wav` 檔案進行聲音複製，傳遞至支援的模型
+- **效能指標顯示**：每個模型顯示推理時間、RTF（即時因子）、檔案大小
+- **預生成示範音訊**：9 個預先合成的音訊，相同文字、相同性別，直接比較音質差異
+- **下載功能**：可直接下載各模型生成的音訊檔案
+- 深色主題、響應式排版（支援手機）
+
+---
+
+## 目錄結構
 
 ```
 project_tts/
 ├── frontend/
-│   ├── index.html          # Main UI
-│   ├── style.css           # Dark theme, CSS Grid layout
-│   ├── app.js              # Fetch API, parallel generation, health check
-│   └── samples/            # Pre-generated demo audio (9 × .mp3)
-└── AI_end/
-    ├── server.py           # FastAPI app (port 8000)
-    ├── config.py           # Model paths, output dir, port
-    ├── requirements.txt
-    ├── generate_samples.py # Script to regenerate demo audio
-    └── models/
-        ├── base.py         # Abstract BaseTTS class
-        ├── f5_tts.py       # F5-TTS wrapper (stub → real)
-        ├── cosyvoice.py    # CosyVoice wrapper (stub → real)
-        └── gpt_sovits.py   # GPT-SoVITs wrapper (stub → real)
+│   ├── index.html           # 主頁面
+│   ├── style.css            # 深色主題、CSS Grid 排版
+│   ├── app.js               # Fetch API、平行合成、健康檢查
+│   └── samples/             # 預生成示範音訊（9 個 .mp3）
+├── AI_end/
+│   ├── server.py            # FastAPI 主伺服器（Port 8000）
+│   ├── config.py            # 模型路徑、輸出目錄、Port 設定
+│   ├── requirements.txt     # 主伺服器依賴套件
+│   ├── generate_samples.py  # 重新生成示範音訊的腳本
+│   ├── models/
+│   │   ├── base.py          # 抽象基底類別 BaseTTS
+│   │   ├── worker_base.py   # 子程序 Worker 管理器
+│   │   ├── f5_tts.py        # F5-TTS 模型封裝
+│   │   ├── cosyvoice.py     # CosyVoice 模型封裝
+│   │   └── gpt_sovits.py    # GPT-SoVITs 模型封裝
+│   └── workers/
+│       ├── f5_worker.py     # F5-TTS 工作程序（在 ttsenv 中執行）
+│       ├── cosy_worker.py   # CosyVoice 工作程序（在 venv_cosy 中執行）
+│       └── gpt_worker.py    # GPT-SoVITs 工作程序（在 venv_gpt 中執行）
+├── ttsenv/                  # 主伺服器虛擬環境（含 F5-TTS）
+├── venv_cosy/               # CosyVoice 獨立虛擬環境
+├── venv_gpt/                # GPT-SoVITs 獨立虛擬環境
+└── docs/                    # README 截圖
 ```
 
 ---
 
-## Quick Start
+## 系統需求
 
-### 1. Install dependencies
+| 項目 | 最低需求 |
+|------|---------|
+| Python | 3.10 以上 |
+| GPU | NVIDIA（建議 8GB+ VRAM） |
+| CUDA | 12.1 |
+| 磁碟空間 | 約 20GB（模型 + 虛擬環境） |
+| 網路 | 首次安裝需下載模型權重 |
+
+---
+
+## 安裝步驟
+
+### 第一步：Clone 模型倉庫
+
+```bash
+cd <你的工作目錄>
+git clone --depth=1 https://github.com/SWivid/F5-TTS.git
+git clone --depth=1 --recursive https://github.com/FunAudioLLM/CosyVoice.git
+git clone --depth=1 https://github.com/RVC-Boss/GPT-SoVITS.git
+git clone https://github.com/yehdanny/TTS_comparision.git project_tts
+cd project_tts
+```
+
+### 第二步：建立主伺服器虛擬環境（含 F5-TTS）
+
+```bash
+python -m venv ttsenv
+ttsenv/Scripts/activate          # Windows
+pip install torch==2.5.1+cu121 torchaudio==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+pip install -r AI_end/requirements.txt
+pip install f5-tts
+```
+
+### 第三步：建立 CosyVoice 虛擬環境
+
+```bash
+python -m venv venv_cosy --system-site-packages
+venv_cosy/Scripts/pip install "numpy==1.26.4" --force-reinstall --no-deps
+venv_cosy/Scripts/pip install "transformers==4.51.3" "tokenizers==0.21.1" \
+    conformer==0.3.2 HyperPyYAML==1.2.3 "omegaconf==2.3.0" "hydra-core==1.3.2" \
+    "lightning==2.2.4" "librosa==0.10.2" "diffusers==0.29.0" \
+    inflect pyworld "onnxruntime==1.18.0" "openai-whisper==20231117" \
+    huggingface_hub soundfile
+```
+
+### 第四步：建立 GPT-SoVITs 虛擬環境
+
+```bash
+python -m venv venv_gpt --system-site-packages
+venv_gpt/Scripts/pip install "numpy==1.26.4" "transformers==4.46.3" \
+    "tokenizers==0.20.3" "librosa==0.10.2" "peft==0.13.2" \
+    funasr cn2an pypinyin g2p_en jieba sentencepiece chardet \
+    rotary_embedding_torch "fast_langdetect>=0.3.1" wordsegment \
+    "ctranslate2>=4.0,<5" soundfile huggingface_hub
+```
+
+### 第五步：下載模型權重
+
+```bash
+# CosyVoice2-0.5B（約 1.5GB）
+venv_cosy/Scripts/python -c "
+from huggingface_hub import snapshot_download
+snapshot_download('FunAudioLLM/CosyVoice2-0.5B',
+    local_dir='../CosyVoice/pretrained_models/CosyVoice2-0.5B')
+"
+
+# GPT-SoVITS 預訓練模型（約 700MB）
+venv_gpt/Scripts/python -c "
+from huggingface_hub import snapshot_download
+snapshot_download('lj1995/GPT-SoVITS',
+    local_dir='../GPT-SoVITS/GPT_SoVITS/pretrained_models')
+"
+
+# F5-TTS 模型在首次執行時自動從 HuggingFace 下載（約 900MB）
+```
+
+---
+
+## 啟動方式
+
+### 啟動後端伺服器
 
 ```bash
 cd AI_end
-pip install -r requirements.txt
+../ttsenv/Scripts/python server.py
 ```
 
-### 2. Start the backend
+伺服器啟動後會自動在背景載入三個模型（約需 1～3 分鐘）。
+看到以下訊息即代表各模型已就緒：
 
-```bash
-python server.py
-# Server starts at http://localhost:8000
+```
+INFO  models.worker_base  [F5-TTS] Worker ready (pid=XXXX)
+INFO  models.worker_base  [CosyVoice] Worker ready (pid=XXXX)
+INFO  models.worker_base  [GPT-SoVITs] Worker ready (pid=XXXX)
 ```
 
-### 3. Open the frontend
+### 開啟前端頁面
 
-Open `frontend/index.html` directly in your browser, **or** serve it:
+直接在瀏覽器開啟 `frontend/index.html`，或使用 HTTP 伺服器：
 
 ```bash
-# From project root
+# 從專案根目錄執行
 python -m http.server 5500
-# Then open http://localhost:5500/frontend/index.html
+# 開啟 http://localhost:5500/frontend/index.html
 ```
 
-### 4. Regenerate demo samples (optional)
+### 重新生成示範音訊（選用）
 
 ```bash
 cd AI_end
-python generate_samples.py
+../ttsenv/Scripts/python generate_samples.py
 ```
 
 ---
 
-## API Reference
+## API 說明
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/health` | Returns loaded status for all 3 models |
-| `POST` | `/api/tts/f5` | Generate speech with F5-TTS |
-| `POST` | `/api/tts/cosyvoice` | Generate speech with CosyVoice |
-| `POST` | `/api/tts/gptsovits` | Generate speech with GPT-SoVITs |
-| `GET` | `/api/audio/{filename}` | Serve generated audio file |
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| `GET` | `/api/health` | 查詢三個模型的載入狀態 |
+| `POST` | `/api/tts/f5` | 使用 F5-TTS 合成語音 |
+| `POST` | `/api/tts/cosyvoice` | 使用 CosyVoice 合成語音 |
+| `POST` | `/api/tts/gptsovits` | 使用 GPT-SoVITs 合成語音 |
+| `GET` | `/api/audio/{filename}` | 取得生成的音訊檔案 |
 
-**Request body** (POST endpoints):
+**POST 請求格式：**
 
 ```json
 {
   "text": "你好，這是語音合成測試。",
-  "reference_audio": "<base64-encoded WAV, optional>"
+  "reference_audio": "<Base64 編碼的 WAV 音訊（選用）>"
 }
 ```
 
-**Response:**
+**回應格式：**
 
 ```json
 {
   "model": "f5",
-  "audio_url": "/api/audio/f5_abc123.mp3",
+  "audio_url": "/api/audio/f5_abc123.wav",
   "inference_time": 1.23,
   "rtf": 0.45,
-  "file_size_kb": 42.1
+  "file_size_kb": 128.5
 }
 ```
 
 ---
 
-## Demo Sample Voices (Stub Mode)
+## 架構說明
 
-| Sample | F5-TTS | CosyVoice | GPT-SoVITs |
-|--------|--------|-----------|------------|
-| 繁體中文 Female | zh-TW-HsiaoChenNeural | zh-TW-HsiaoYuNeural | zh-CN-XiaoxiaoNeural |
-| 繁體中文 Male | zh-TW-YunJheNeural | zh-CN-YunxiNeural | zh-CN-YunjianNeural |
-| English Female | en-US-JennyNeural | en-US-AriaNeural | en-GB-SoniaNeural |
+本專案採用**多程序獨立環境**架構，解決三個模型之間的 Python 套件版本衝突問題：
 
----
-
-## Swapping Stubs for Real Models
-
-1. Install the real model (e.g. F5-TTS, CosyVoice, GPT-SoVITs)
-2. Fill in `AI_end/config.py`:
-
-```python
-MODEL_PATHS = {
-    "f5_tts":    "/path/to/f5-tts/model",
-    "cosyvoice": "/path/to/cosyvoice/model",
-    "gpt_sovits": "/path/to/gpt-sovits",
-}
+```
+┌─────────────────────────────────┐
+│  FastAPI 主伺服器 (port 8000)    │
+│  ttsenv                         │
+└──────┬─────────┬────────────────┘
+       │ stdin/stdout JSON-lines
+  ┌────┴───┐ ┌───┴──────┐ ┌────────────────┐
+  │F5-TTS  │ │CosyVoice │ │ GPT-SoVITs     │
+  │Worker  │ │Worker    │ │ Worker         │
+  │ttsenv  │ │venv_cosy │ │ venv_gpt       │
+  └────────┘ └──────────┘ └────────────────┘
 ```
 
-3. In the corresponding wrapper file (e.g. `models/f5_tts.py`):
-   - Uncomment the real import line
-   - Remove `raise ImportError(...)`
-   - Fill in the `_real_generate` method body
+- 每個模型在獨立的子程序中執行，避免套件衝突
+- 主伺服器透過 stdin/stdout 傳送 JSON 請求給各 Worker
+- Worker 啟動後持續駐留記憶體，不需每次重新載入模型
+- 若模型未載入，自動降級使用 edge-tts（Microsoft 線上 TTS）作為備用
 
 ---
 
-## Requirements
+## 示範音訊聲音對照表（備用模式）
 
-- Python 3.10+
-- Internet connection (for stub mode — edge-tts calls Microsoft Neural TTS)
-- No GPU required in stub mode
+| 示範情境 | F5-TTS | CosyVoice | GPT-SoVITs |
+|---------|--------|-----------|------------|
+| 繁體中文・女聲 | zh-TW-HsiaoChenNeural | zh-TW-HsiaoYuNeural | zh-CN-XiaoxiaoNeural |
+| 繁體中文・男聲 | zh-TW-YunJheNeural | zh-CN-YunxiNeural | zh-CN-YunjianNeural |
+| 英文・女聲 | en-US-JennyNeural | en-US-AriaNeural | en-GB-SoniaNeural |
 
 ---
 
-## License
+## 常見問題
 
-MIT
+**Q：模型載入很慢怎麼辦？**
+A：首次啟動會自動下載模型權重（F5-TTS 約 900MB），之後會從快取讀取，速度較快。
+
+**Q：狀態顯示 Offline？**
+A：表示後端伺服器未啟動，或模型載入失敗。請確認已執行 `python server.py` 且無錯誤訊息。
+
+**Q：有聲音但沒有聲音複製效果？**
+A：GPT-SoVITs 必須上傳參考音訊才能複製聲音。F5-TTS 和 CosyVoice 在沒有參考音訊時會使用預設聲音。
+
+**Q：Windows 上 pyworld 安裝失敗？**
+A：請確認已安裝 Visual C++ Build Tools，或從 [PyPI](https://pypi.org/project/pyworld/) 下載預編譯的 wheel 檔。
+
+---
+
+## 授權
+
+MIT License

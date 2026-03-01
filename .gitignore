@@ -8,6 +8,8 @@ build/
 
 # Virtual environments
 ttsenv/
+venv_cosy/
+venv_gpt/
 venv/
 .venv/
 env/
