@@ -176,7 +176,7 @@ async def regenerate_samples():
             if not model.is_loaded():
                 continue
             try:
-                result = await model.generate_async(text, DEFAULT_REF_AUDIO)
+                result = await model.generate_async(text, None)
                 fixed_name = f"sample_{lang}_{model_key}.wav"
                 fixed_path = str(Path(OUTPUT_DIR) / fixed_name)
                 shutil.copy2(result["audio_path"], fixed_path)
