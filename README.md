@@ -9,10 +9,10 @@
 ## 網頁截圖
 
 ### 主介面 — 即時語音合成
-![主介面](docs/screenshot_main.png)
+![主介面](docs/screenshot_main2.png)
 
 ### 預生成範例區塊
-![範例比較](docs/screenshot_demo.png)
+![範例比較](docs/screenshot_demo2.png)
 
 ---
 

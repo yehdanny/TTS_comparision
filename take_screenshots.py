@@ -52,14 +52,14 @@ async def main() -> None:
         model_grid = await page.query_selector(".model-grid")
         grid_box   = await model_grid.bounding_box()
         await page.screenshot(
-            path=str(DOCS_DIR / "screenshot_main.png"),
+            path=str(DOCS_DIR / "screenshot_main2.png"),
             clip={
                 "x": 0, "y": 0,
                 "width": 1400,
                 "height": grid_box["y"] + grid_box["height"] + 40,
             },
         )
-        print("Saved docs/screenshot_main.png")
+        print("Saved docs/screenshot_main2.png")
 
         # ── Screenshot 2: demo samples section (full height) ─────────────────
         # Expand viewport to fit the entire page so nothing is clipped
@@ -70,7 +70,7 @@ async def main() -> None:
         demo_section = await page.query_selector(".demo-section")
         demo_box     = await demo_section.bounding_box()
         await page.screenshot(
-            path=str(DOCS_DIR / "screenshot_demo.png"),
+            path=str(DOCS_DIR / "screenshot_demo2.png"),
             clip={
                 "x": 0,
                 "y": demo_box["y"] - 20,
@@ -78,7 +78,7 @@ async def main() -> None:
                 "height": demo_box["height"] + 40,
             },
         )
-        print("Saved docs/screenshot_demo.png")
+        print("Saved docs/screenshot_demo2.png")
 
         await browser.close()
     print("Done.")
