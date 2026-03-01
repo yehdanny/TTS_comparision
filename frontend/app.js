@@ -54,8 +54,10 @@ async function generateModel(model) {
     console.warn('Could not read reference audio file');
   }
 
+  const refTextVal = document.getElementById('ref-text').value.trim();
   const body = { text };
   if (refAudio) body.reference_audio = refAudio;
+  if (refTextVal) body.ref_text = refTextVal;
 
   try {
     const res = await fetch(`${API_BASE}/api/tts/${model}`, {
@@ -116,6 +118,27 @@ function showSpinner(model, show) {
 
 function hideAudio(model) {
   document.getElementById(`audio-section-${model}`).style.display = 'none';
+}
+
+// ── Regenerate pre-generated samples ─────────────────────────────────────────
+async function regenerateSamples() {
+  const btn = document.getElementById('btn-regen');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  try {
+    const res = await fetch(`${API_BASE}/api/regenerate-samples`, { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    for (const el of document.querySelectorAll('[id^="sample-audio-"]')) {
+      const base = el.src.split('?')[0];
+      el.src = base + '?t=' + Date.now();
+      el.load();
+    }
+  } catch (err) {
+    alert('Sample generation failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Regenerate Samples';
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

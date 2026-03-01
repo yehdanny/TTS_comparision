@@ -23,6 +23,10 @@
         <label for="ref-audio">Reference Audio <span class="optional">(optional, for voice cloning)</span></label>
         <input type="file" id="ref-audio" accept="audio/*" />
       </div>
+      <div class="input-group">
+        <label for="ref-text">Reference Transcript <span class="optional">(optional — text spoken in the reference audio, required for CosyVoice cloning)</span></label>
+        <input type="text" id="ref-text" placeholder="e.g. 你好，這是參考音頻的內容。" />
+      </div>
       <button id="btn-generate-all" class="btn btn-primary" onclick="generateAll()">Generate All</button>
     </section>
 
@@ -88,8 +92,11 @@
 
     <!-- ── Demo Samples ─────────────────────────────────────────────────── -->
     <section class="demo-section">
-      <h2 class="demo-title">Pre-generated Samples</h2>
-      <p class="demo-subtitle">Same text &middot; Same gender &middot; Same language — only the TTS system differs</p>
+      <div class="demo-section-header">
+        <h2 class="demo-title">Pre-generated Samples</h2>
+        <button class="btn btn-secondary" onclick="regenerateSamples()" id="btn-regen">Regenerate Samples</button>
+      </div>
+      <p class="demo-subtitle">Same text &middot; Same voice — only the TTS system differs</p>
 
       <!-- Row header -->
       <div class="demo-grid demo-header-row">
@@ -99,57 +106,37 @@
         <div class="demo-col-model">GPT-SoVITs</div>
       </div>
 
-      <!-- Sample 1: Traditional Chinese · Female -->
+      <!-- Sample 1: Traditional Chinese -->
       <div class="demo-grid demo-row">
         <div class="demo-col-label">
           <span class="lang-tag">繁體中文</span>
-          <span class="gender-tag female">Female</span>
           <p class="sample-text">人工智慧語音合成技術正在快速發展，未來將有更多創新的應用場景。</p>
         </div>
         <div class="demo-col-model">
-          <audio controls src="samples/zh_female_f5.mp3"></audio>
+          <audio id="sample-audio-zh-f5" controls src="http://localhost:8000/api/audio/sample_zh_f5.wav"></audio>
         </div>
         <div class="demo-col-model">
-          <audio controls src="samples/zh_female_cosyvoice.mp3"></audio>
+          <audio id="sample-audio-zh-cosyvoice" controls src="http://localhost:8000/api/audio/sample_zh_cosyvoice.wav"></audio>
         </div>
         <div class="demo-col-model">
-          <audio controls src="samples/zh_female_gptsovits.mp3"></audio>
+          <audio id="sample-audio-zh-gptsovits" controls src="http://localhost:8000/api/audio/sample_zh_gptsovits.wav"></audio>
         </div>
       </div>
 
-      <!-- Sample 2: Traditional Chinese · Male -->
-      <div class="demo-grid demo-row">
-        <div class="demo-col-label">
-          <span class="lang-tag">繁體中文</span>
-          <span class="gender-tag male">Male</span>
-          <p class="sample-text">歡迎使用語音合成比較平台，請輸入您想要合成的文字內容。</p>
-        </div>
-        <div class="demo-col-model">
-          <audio controls src="samples/zh_male_f5.mp3"></audio>
-        </div>
-        <div class="demo-col-model">
-          <audio controls src="samples/zh_male_cosyvoice.mp3"></audio>
-        </div>
-        <div class="demo-col-model">
-          <audio controls src="samples/zh_male_gptsovits.mp3"></audio>
-        </div>
-      </div>
-
-      <!-- Sample 3: English · Female -->
+      <!-- Sample 2: English -->
       <div class="demo-grid demo-row">
         <div class="demo-col-label">
           <span class="lang-tag en">English</span>
-          <span class="gender-tag female">Female</span>
           <p class="sample-text">Artificial intelligence is transforming the way we interact with technology every day.</p>
         </div>
         <div class="demo-col-model">
-          <audio controls src="samples/en_female_f5.mp3"></audio>
+          <audio id="sample-audio-en-f5" controls src="http://localhost:8000/api/audio/sample_en_f5.wav"></audio>
         </div>
         <div class="demo-col-model">
-          <audio controls src="samples/en_female_cosyvoice.mp3"></audio>
+          <audio id="sample-audio-en-cosyvoice" controls src="http://localhost:8000/api/audio/sample_en_cosyvoice.wav"></audio>
         </div>
         <div class="demo-col-model">
-          <audio controls src="samples/en_female_gptsovits.mp3"></audio>
+          <audio id="sample-audio-en-gptsovits" controls src="http://localhost:8000/api/audio/sample_en_gptsovits.wav"></audio>
         </div>
       </div>
 

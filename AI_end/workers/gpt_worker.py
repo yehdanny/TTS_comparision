@@ -19,6 +19,21 @@ sys.path.insert(0, os.path.join(GPT_REPO, "GPT_SoVITS"))
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+DEFAULT_REF_AUDIO = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "ref_audio", "reference.wav")
+)
+
+# fast-langdetect expects its cache directory to exist before model load
+_LANGDETECT_CACHE = os.path.join(GPT_REPO, "GPT_SoVITS", "pretrained_models", "fast_langdetect")
+os.makedirs(_LANGDETECT_CACHE, exist_ok=True)
+
+# NLTK data required by G2P / text processing
+import nltk   # noqa: E402
+try:
+    nltk.data.find("taggers/averaged_perceptron_tagger_eng")
+except LookupError:
+    nltk.download("averaged_perceptron_tagger_eng", quiet=True)
+
 # GPT-SoVITS resolves all model paths relative to the repo root
 os.chdir(GPT_REPO)
 
@@ -55,10 +70,13 @@ def handle(req: dict) -> dict:
     ref_text = req.get("ref_text", "")
 
     if not ref_path or not os.path.exists(ref_path):
-        raise RuntimeError(
-            "GPT-SoVITS requires a reference audio file. "
-            "Please upload a WAV file in the reference audio field."
-        )
+        if os.path.exists(DEFAULT_REF_AUDIO):
+            ref_path = DEFAULT_REF_AUDIO
+        else:
+            raise RuntimeError(
+                "GPT-SoVITS requires a reference audio file. "
+                "Please upload a WAV file or place one at ref_audio/reference.wav."
+            )
 
     out_path  = os.path.join(OUTPUT_DIR, f"gptsovits_{uuid.uuid4().hex}.wav")
     text_lang = _detect_lang(text)

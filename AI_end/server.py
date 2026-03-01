@@ -6,6 +6,7 @@ Run: python server.py  (from AI_end/)
 import base64
 import logging
 import os
+import shutil
 import tempfile
 import uuid
 from contextlib import asynccontextmanager
@@ -18,6 +19,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from config import MODEL_PATHS, OUTPUT_DIR, PORT
+
+DEFAULT_REF_AUDIO = str(Path(__file__).parent.parent / "ref_audio" / "reference.wav")
+
+SAMPLE_TEXTS = {
+    "zh": "人工智慧語音合成技術正在快速發展，未來將有更多創新的應用場景。",
+    "en": "Artificial intelligence is transforming the way we interact with technology every day.",
+}
 from models.f5_tts import F5TTSModel
 from models.cosyvoice import CosyVoiceModel
 from models.gpt_sovits import GPTSoVITsModel
@@ -74,6 +82,7 @@ app.add_middleware(
 class TTSRequest(BaseModel):
     text: str
     reference_audio: str | None = None   # base64-encoded WAV
+    ref_text: str = ""                   # transcript of reference audio (required by CosyVoice)
 
 
 class TTSResponse(BaseModel):
@@ -116,7 +125,7 @@ async def _run_model(key: str, req: TTSRequest) -> TTSResponse:
             logger.warning("Could not decode reference audio: %s", exc)
     try:
         if model.is_loaded():
-            result = await model.generate_async(req.text, ref_path)
+            result = await model.generate_async(req.text, ref_path, req.ref_text)
         else:
             import asyncio
             result = await asyncio.get_event_loop().run_in_executor(
@@ -155,6 +164,26 @@ async def tts_cosyvoice(req: TTSRequest):
 @app.post("/api/tts/gptsovits", response_model=TTSResponse)
 async def tts_gptsovits(req: TTSRequest):
     return await _run_model("gptsovits", req)
+
+
+@app.post("/api/regenerate-samples")
+async def regenerate_samples():
+    if not Path(DEFAULT_REF_AUDIO).exists():
+        raise HTTPException(status_code=400, detail="No reference audio found at ref_audio/reference.wav")
+    urls = {}
+    for lang, text in SAMPLE_TEXTS.items():
+        for model_key, model in models.items():
+            if not model.is_loaded():
+                continue
+            try:
+                result = await model.generate_async(text, DEFAULT_REF_AUDIO)
+                fixed_name = f"sample_{lang}_{model_key}.wav"
+                fixed_path = str(Path(OUTPUT_DIR) / fixed_name)
+                shutil.copy2(result["audio_path"], fixed_path)
+                urls[f"{lang}_{model_key}"] = f"/api/audio/{fixed_name}"
+            except Exception as exc:
+                logger.error("[regenerate-samples] %s/%s failed: %s", lang, model_key, exc)
+    return {"status": "ok", "urls": urls}
 
 
 @app.get("/api/audio/{filename}")

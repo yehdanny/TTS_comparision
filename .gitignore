@@ -28,6 +28,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Reference audio (user-provided, not committed)
+ref_audio/*.wav
+ref_audio/*.txt
+
 # Model weights (large binary files)
 *.pt
 *.pth

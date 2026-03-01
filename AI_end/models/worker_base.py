@@ -40,7 +40,8 @@ class WorkerModel:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env={**os.environ, "PYTHONUNBUFFERED": "1"},
+                env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"},
+                limit=2**20,  # 1 MB – prevents LimitOverrunError on long model-load logs
             )
             # Stream stderr to our logger in the background
             asyncio.create_task(self._pipe_stderr())
@@ -76,23 +77,33 @@ class WorkerModel:
 
     # ── inference ─────────────────────────────────────────────────────────────
 
-    async def generate_async(self, text: str, ref_audio_path: str | None = None) -> dict:
+    async def generate_async(self, text: str, ref_audio_path: str | None = None, ref_text: str = "") -> dict:
         if not self.is_loaded():
             raise RuntimeError(f"{self._name} worker is not running")
 
         req_id = str(uuid.uuid4())
-        payload = json.dumps({"id": req_id, "text": text, "ref_audio": ref_audio_path})
+        payload = json.dumps({"id": req_id, "text": text, "ref_audio": ref_audio_path, "ref_text": ref_text})
 
         async with self._lock:   # one request at a time per worker
             assert self._proc and self._proc.stdin and self._proc.stdout
             self._proc.stdin.write((payload + "\n").encode())
             await self._proc.stdin.drain()
 
-            raw = await asyncio.wait_for(
-                self._proc.stdout.readline(), timeout=WORKER_TIMEOUT
-            )
-
-        resp = json.loads(raw.decode().strip())
+            while True:
+                raw = await asyncio.wait_for(
+                    self._proc.stdout.readline(), timeout=WORKER_TIMEOUT
+                )
+                if not raw:
+                    raise RuntimeError(f"{self._name} worker closed stdout unexpectedly")
+                line = raw.decode().strip()
+                if not line:
+                    continue
+                try:
+                    resp = json.loads(line)
+                    break
+                except json.JSONDecodeError:
+                    logger.debug("[%s] non-JSON stdout (skipped): %s", self._name, line)
+                    continue
         if "error" in resp and resp["error"]:
             raise RuntimeError(resp["error"])
         return resp

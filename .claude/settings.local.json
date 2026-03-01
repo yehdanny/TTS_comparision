@@ -15,7 +15,9 @@
       "Bash(timeout 60 ../venv_cosy/Scripts/python:*)",
       "Bash(timeout 30 ../venv_gpt/Scripts/python:*)",
       "Bash(timeout 120 ../venv_cosy/Scripts/python:*)",
-      "Bash(timeout 60 ../venv_gpt/Scripts/python:*)"
+      "Bash(timeout 60 ../venv_gpt/Scripts/python:*)",
+      "Bash(venv_cosy/Scripts/pip show:*)",
+      "Bash(PYTHONUTF8=1:*)"
     ]
   }
 }
